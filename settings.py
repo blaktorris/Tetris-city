@@ -75,4 +75,7 @@ TETRIS_CLEAR_SOUND_FILE = 'tetris_clear_futuristic.wav' # For 4 lines cleared (a
 GAME_OVER_SOUND_FILE = 'game_over_tech.wav' # When the game ends
 
 # Placeholder Background Music Filename (replace with your file)
-BACKGROUND_MUSIC_FILE = 'music_futuristic_loop.ogg' # .ogg is good for looping music
+BACKGROUND_MUSIC_FILE = 'charlie_parra_sf2_soundtrack.ogg'
+# Placeholder for user's chosen Street Fighter 2 Medley by Charlie Parra.
+# User needs to provide this file (e.g., charlie_parra_sf2_soundtrack.ogg or .mp3).
+# Please be mindful of copyright if distributing this game.
