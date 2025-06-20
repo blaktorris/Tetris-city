@@ -52,30 +52,30 @@ PREVIEW_BORDER_COLOR = GRID_COLOR
 NEXT_LABEL_X = PREVIEW_AREA_X + PREVIEW_AREA_WIDTH // 2
 NEXT_LABEL_Y = PREVIEW_AREA_Y - LABEL_FONT_SIZE // 2 - 5 # 5px padding above preview box
 
-# ==============================================================================
-# GAME SOUND ASSETS
-# ==============================================================================
-# Replace the placeholder filenames below (e.g., 'rotate_tech.wav')
-# with the actual paths to your sound effect and music files.
-#
-# Supported formats generally include .wav for sound effects
-# and .ogg or .mp3 for background music.
-#
-# If ENABLE_SOUND is True and files are not found, the game will print
-# a warning to the console but will run without sound for that specific effect.
-# ==============================================================================
-ENABLE_SOUND = True # Master switch for all sounds and music
+# # ==============================================================================
+# # GAME SOUND ASSETS
+# # ==============================================================================
+# # Replace the placeholder filenames below (e.g., 'rotate_tech.wav')
+# # with the actual paths to your sound effect and music files.
+# #
+# # Supported formats generally include .wav for sound effects
+# # and .ogg or .mp3 for background music.
+# #
+# # If ENABLE_SOUND is True and files are not found, the game will print
+# # a warning to the console but will run without sound for that specific effect.
+# # ==============================================================================
+# ENABLE_SOUND = True # Master switch for all sounds and music
 
-# Placeholder Sound Effect Filenames (replace with your files)
-ROTATE_SOUND_FILE = 'rotate_tech.wav'
-MOVE_SOUND_FILE = 'move_tech.wav' # For block horizontal and soft drop movement
-LAND_SOUND_FILE = 'land_tech.wav' # When a block locks into place
-LINE_CLEAR_SOUND_FILE = 'line_clear_tech.wav' # For 1, 2, or 3 lines cleared
-TETRIS_CLEAR_SOUND_FILE = 'tetris_clear_futuristic.wav' # For 4 lines cleared (a Tetris)
-GAME_OVER_SOUND_FILE = 'game_over_tech.wav' # When the game ends
+# # Placeholder Sound Effect Filenames (replace with your files)
+# ROTATE_SOUND_FILE = 'rotate_tech.wav'
+# MOVE_SOUND_FILE = 'move_tech.wav' # For block horizontal and soft drop movement
+# LAND_SOUND_FILE = 'land_tech.wav' # When a block locks into place
+# LINE_CLEAR_SOUND_FILE = 'line_clear_tech.wav' # For 1, 2, or 3 lines cleared
+# TETRIS_CLEAR_SOUND_FILE = 'tetris_clear_futuristic.wav' # For 4 lines cleared (a Tetris)
+# GAME_OVER_SOUND_FILE = 'game_over_tech.wav' # When the game ends
 
-# Placeholder Background Music Filename (replace with your file)
-BACKGROUND_MUSIC_FILE = 'charlie_parra_sf2_soundtrack.ogg'
-# Placeholder for user's chosen Street Fighter 2 Medley by Charlie Parra.
-# User needs to provide this file (e.g., charlie_parra_sf2_soundtrack.ogg or .mp3).
-# Please be mindful of copyright if distributing this game.
+# # Placeholder Background Music Filename (replace with your file)
+# BACKGROUND_MUSIC_FILE = 'charlie_parra_sf2_soundtrack.ogg'
+# # Placeholder for user's chosen Street Fighter 2 Medley by Charlie Parra.
+# # User needs to provide this file (e.g., charlie_parra_sf2_soundtrack.ogg or .mp3).
+# # Please be mindful of copyright if distributing this game.
