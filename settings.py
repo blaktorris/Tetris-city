@@ -75,6 +75,6 @@ TETRIS_CLEAR_SOUND_FILE = 'tetris_clear_futuristic.wav' # For 4 lines cleared (a
 GAME_OVER_SOUND_FILE = 'game_over_tech.wav' # When the game ends
 
 # Placeholder Background Music Filename (replace with your file)
-BACKGROUND_MUSIC_FILE = 'music_futuristic_loop.ogg' # .ogg is good for looping music
-# The specific comment about 'charlie_parra_sf2_soundtrack.ogg' has been removed
-# as we are restoring the generic placeholder.
+BACKGROUND_MUSIC_FILE = 'relaxing-guitar-loop-v5-245859.ogg'
+# Placeholder for user's chosen background music: 'relaxing-guitar-loop-v5-245859.ogg'
+# User needs to provide this file. .ogg or .mp3 are common for music.
