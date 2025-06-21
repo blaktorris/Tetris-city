@@ -39,46 +39,51 @@ def main():
     game_over_sound = None
 
     def load_sounds():
-        # This function attempts to load the sound files defined in settings.py.
-        # If you haven't replaced the placeholder filenames in settings.py
-        # with your actual sound files, warnings will be printed to the console,
-        # and those specific sounds will not play.
         nonlocal rotate_sound, move_sound, land_sound, line_clear_sound, tetris_clear_sound, game_over_sound
 
-        if not ENABLE_SOUND: # Use settings.ENABLE_SOUND for clarity if settings is imported as settings
-            print("Sound loading skipped: ENABLE_SOUND is False.")
+        sounds_enabled_by_setting = globals().get('ENABLE_SOUND', False)
+
+        if not sounds_enabled_by_setting:
+            # print("Sound loading skipped: ENABLE_SOUND is False or missing from settings.") # Optional print
             return
         if not pygame.mixer.get_init():
-            print("Sound loading skipped: Pygame mixer not initialized.")
+            # print("Sound loading skipped: Pygame mixer not initialized.") # Optional print
             return
 
-        try: rotate_sound = pygame.mixer.Sound(ROTATE_SOUND_FILE)
-        except pygame.error as e: print(f"Warning: Could not load sound '{ROTATE_SOUND_FILE}'. {e}")
+        def _load_individual_sound(sound_constant_name):
+            file_path = globals().get(sound_constant_name)
+            if file_path:
+                try:
+                    return pygame.mixer.Sound(file_path)
+                except pygame.error as e:
+                    print(f"Warning: Pygame error loading sound '{file_path}' for {sound_constant_name}. {e}")
+                except Exception as e:
+                    print(f"Warning: Generic error loading sound '{file_path}' for {sound_constant_name}. {e}")
+            elif sounds_enabled_by_setting: # Only warn if sounds were expected
+                print(f"Warning: Sound file constant '{sound_constant_name}' not found or is None in settings.")
+            return None
 
-        try: move_sound = pygame.mixer.Sound(MOVE_SOUND_FILE)
-        except pygame.error as e: print(f"Warning: Could not load sound '{MOVE_SOUND_FILE}'. {e}")
-
-        try: land_sound = pygame.mixer.Sound(LAND_SOUND_FILE)
-        except pygame.error as e: print(f"Warning: Could not load sound '{LAND_SOUND_FILE}'. {e}")
-
-        try: line_clear_sound = pygame.mixer.Sound(LINE_CLEAR_SOUND_FILE)
-        except pygame.error as e: print(f"Warning: Could not load sound '{LINE_CLEAR_SOUND_FILE}'. {e}")
-
-        try: tetris_clear_sound = pygame.mixer.Sound(TETRIS_CLEAR_SOUND_FILE)
-        except pygame.error as e: print(f"Warning: Could not load sound '{TETRIS_CLEAR_SOUND_FILE}'. {e}")
-
-        try: game_over_sound = pygame.mixer.Sound(GAME_OVER_SOUND_FILE)
-        except pygame.error as e: print(f"Warning: Could not load sound '{GAME_OVER_SOUND_FILE}'. {e}")
+        rotate_sound = _load_individual_sound('ROTATE_SOUND_FILE')
+        move_sound = _load_individual_sound('MOVE_SOUND_FILE')
+        land_sound = _load_individual_sound('LAND_SOUND_FILE')
+        line_clear_sound = _load_individual_sound('LINE_CLEAR_SOUND_FILE')
+        tetris_clear_sound = _load_individual_sound('TETRIS_CLEAR_SOUND_FILE')
+        game_over_sound = _load_individual_sound('GAME_OVER_SOUND_FILE')
 
         # Load background music
-        try:
-            pygame.mixer.music.load(BACKGROUND_MUSIC_FILE)
-            print(f"Background music '{BACKGROUND_MUSIC_FILE}' loaded.")
-            if ENABLE_SOUND and pygame.mixer.get_init():
-                pygame.mixer.music.play(-1) # Start playing music on loop
-                # music_playing variable will be managed based on this initial play
-        except pygame.error as e:
-            print(f"Warning: Could not load background music {BACKGROUND_MUSIC_FILE}. {e}")
+        music_constant_name = 'BACKGROUND_MUSIC_FILE'
+        music_file_path = globals().get(music_constant_name)
+        if music_file_path:
+            try:
+                pygame.mixer.music.load(music_file_path)
+                # print(f"Background music '{music_file_path}' loaded successfully.") # Optional print
+                pygame.mixer.music.play(-1) # Loop indefinitely
+            except pygame.error as e:
+                print(f"Warning: Pygame error with background music '{music_file_path}'. {e}")
+            except Exception as e:
+                print(f"Warning: Generic error with background music '{music_file_path}'. {e}")
+        elif sounds_enabled_by_setting: # Only warn if sounds were expected
+            print(f"Warning: Background music constant '{music_constant_name}' not found or is None in settings.")
 
     load_sounds()
 
@@ -89,7 +94,7 @@ def main():
     score = 0
     game_over = False
     paused = False
-    music_playing = ENABLE_SOUND and pygame.mixer.get_init() and pygame.mixer.music.get_busy()
+    music_playing = globals().get('ENABLE_SOUND', False) and pygame.mixer.get_init() and pygame.mixer.music.get_busy()
 
 
     # Scoring system
@@ -99,7 +104,8 @@ def main():
     FALL_EVENT = pygame.USEREVENT + 1
 
     def play_sound(sound_object):
-        if ENABLE_SOUND and sound_object and pygame.mixer.get_init():
+        sounds_enabled_by_setting = globals().get('ENABLE_SOUND', False)
+        if sounds_enabled_by_setting and sound_object and pygame.mixer.get_init():
             sound_object.play()
 
     def handle_landing():
@@ -146,7 +152,7 @@ def main():
         spawn_new_tetromino()
         pygame.time.set_timer(FALL_EVENT, int(fall_speed * 1000))
 
-        if ENABLE_SOUND and pygame.mixer.get_init():
+        if globals().get('ENABLE_SOUND', False) and pygame.mixer.get_init():
             try:
                 # Ensure music is loaded before trying to play. load_sounds() should have handled this.
                 # If music was stopped, play it again.
@@ -180,7 +186,7 @@ def main():
                             pygame.time.set_timer(FALL_EVENT, int(fall_speed * 1000))
                             if music_playing: pygame.mixer.music.unpause() # Resume music
                 elif event.key == pygame.K_m: # Mute/Unmute toggle
-                    if ENABLE_SOUND and pygame.mixer.get_init():
+                    if globals().get('ENABLE_SOUND', False) and pygame.mixer.get_init():
                         if music_playing:
                             pygame.mixer.music.pause()
                             music_playing = False
@@ -268,47 +274,74 @@ def main():
 
         # --- Side Panel Rendering (Score and Preview) ---
 
-        # Display current score
+        # Safely get display settings for preview, with defaults
+        _BLOCK_SIZE = globals().get('BLOCK_SIZE', 30)
+        _PREVIEW_AREA_X = globals().get('PREVIEW_AREA_X', GAME_BOARD_WIDTH + 10) # Default X if not in settings
+        _PREVIEW_AREA_Y = globals().get('PREVIEW_AREA_Y', 50) # Default Y
+        _PREVIEW_AREA_WIDTH = globals().get('PREVIEW_AREA_WIDTH', 130)
+        _PREVIEW_AREA_HEIGHT = globals().get('PREVIEW_AREA_HEIGHT', 100)
+        _PREVIEW_AREA_COLOR = globals().get('PREVIEW_AREA_COLOR', (20,20,20))
+        _PREVIEW_BORDER_COLOR = globals().get('PREVIEW_BORDER_COLOR', (50,50,50))
+        _NEXT_LABEL_TEXT = globals().get('NEXT_LABEL_TEXT', "Next:")
+        _NEXT_LABEL_X = globals().get('NEXT_LABEL_X', _PREVIEW_AREA_X + _PREVIEW_AREA_WIDTH // 2)
+        _NEXT_LABEL_Y = globals().get('NEXT_LABEL_Y', _PREVIEW_AREA_Y - 15) # Adjust based on font size if possible
+
+        # Ensure numeric types for calculations
+        if not isinstance(_BLOCK_SIZE, (int, float)): _BLOCK_SIZE = 30
+        if not isinstance(_PREVIEW_AREA_WIDTH, (int, float)): _PREVIEW_AREA_WIDTH = 100
+        if not isinstance(_PREVIEW_AREA_HEIGHT, (int, float)): _PREVIEW_AREA_HEIGHT = 100
+        if not isinstance(_PREVIEW_AREA_X, (int, float)): _PREVIEW_AREA_X = GAME_BOARD_WIDTH + 10
+        if not isinstance(_PREVIEW_AREA_Y, (int, float)): _PREVIEW_AREA_Y = 50
+        if not isinstance(_NEXT_LABEL_X, (int, float)): _NEXT_LABEL_X = _PREVIEW_AREA_X + _PREVIEW_AREA_WIDTH // 2
+        if not isinstance(_NEXT_LABEL_Y, (int, float)): _NEXT_LABEL_Y = _PREVIEW_AREA_Y -15
+
+
+        # Display current score (using safe access for its position constants too)
+        _SCORE_TEXT_X = globals().get('SCORE_TEXT_X', SCREEN_WIDTH - SIDE_PANEL_WIDTH // 2) # Example default
+        _SCORE_TEXT_Y = globals().get('SCORE_TEXT_Y', 30) # Example default
+        if not isinstance(_SCORE_TEXT_X, (int, float)): _SCORE_TEXT_X = SCREEN_WIDTH - SIDE_PANEL_WIDTH // 2
+        if not isinstance(_SCORE_TEXT_Y, (int, float)): _SCORE_TEXT_Y = 30
+
         score_surface = score_font.render(f"Score: {score}", True, SCORE_FONT_COLOR)
-        score_display_rect = score_surface.get_rect(center=(SCORE_TEXT_X, SCORE_TEXT_Y))
+        score_display_rect = score_surface.get_rect(center=(_SCORE_TEXT_X, _SCORE_TEXT_Y))
         screen.blit(score_surface, score_display_rect)
 
         # Draw border/background for preview area
-        preview_bg_rect = pygame.Rect(PREVIEW_AREA_X, PREVIEW_AREA_Y, PREVIEW_AREA_WIDTH, PREVIEW_AREA_HEIGHT)
-        pygame.draw.rect(screen, PREVIEW_AREA_COLOR, preview_bg_rect) # Background
-        pygame.draw.rect(screen, PREVIEW_BORDER_COLOR, preview_bg_rect, 2) # Border
+        preview_bg_rect = pygame.Rect(_PREVIEW_AREA_X, _PREVIEW_AREA_Y, _PREVIEW_AREA_WIDTH, _PREVIEW_AREA_HEIGHT)
+        pygame.draw.rect(screen, _PREVIEW_AREA_COLOR, preview_bg_rect)
+        pygame.draw.rect(screen, _PREVIEW_BORDER_COLOR, preview_bg_rect, 2)
 
         # Render "Next Block" label
-        next_label_surface = label_font.render(NEXT_LABEL_TEXT, True, LABEL_FONT_COLOR)
-        # Use NEXT_LABEL_X and NEXT_LABEL_Y from settings for precise positioning
-        label_rect = next_label_surface.get_rect(center=(NEXT_LABEL_X, NEXT_LABEL_Y))
+        next_label_surface = label_font.render(_NEXT_LABEL_TEXT, True, LABEL_FONT_COLOR)
+        label_rect = next_label_surface.get_rect(center=(_NEXT_LABEL_X, _NEXT_LABEL_Y))
         screen.blit(next_label_surface, label_rect)
 
         if next_tetromino and not game_over:
-            # Calculate position to draw the next_tetromino centered in the preview area
-            # Make preview blocks smaller if the area is small, but not too small
-            preview_block_scale = 0.75
-            preview_block_size = int(BLOCK_SIZE * preview_block_scale)
+            valid_shape = False
+            if next_tetromino.shape and isinstance(next_tetromino.shape, list) and len(next_tetromino.shape) > 0:
+                if isinstance(next_tetromino.shape[0], list) and len(next_tetromino.shape[0]) > 0:
+                    valid_shape = True
 
-            # Ensure tetromino shape is not empty before calculating its dimensions
-            if next_tetromino.shape and len(next_tetromino.shape) > 0 and len(next_tetromino.shape[0]) > 0 :
-                if PREVIEW_AREA_WIDTH < (len(next_tetromino.shape[0]) * preview_block_size) or \
-                   PREVIEW_AREA_HEIGHT < (len(next_tetromino.shape) * preview_block_size) or \
-                   preview_block_size <=0 : # ensure block size is positive
+            if valid_shape:
+                preview_block_scale = 0.75
+                preview_block_size = int(_BLOCK_SIZE * preview_block_scale)
 
-                    shape_cols = len(next_tetromino.shape[0])
-                    shape_rows = len(next_tetromino.shape)
+                shape_cols = len(next_tetromino.shape[0])
+                shape_rows = len(next_tetromino.shape)
 
-                    # Calculate block size based on fitting the shape into the preview area
-                    block_size_w = PREVIEW_AREA_WIDTH // shape_cols if shape_cols > 0 else PREVIEW_AREA_WIDTH
-                    block_size_h = PREVIEW_AREA_HEIGHT // shape_rows if shape_rows > 0 else PREVIEW_AREA_HEIGHT
-                    preview_block_size = max(1, min(block_size_w, block_size_h)) # Ensure at least 1px
+                if _PREVIEW_AREA_WIDTH < (shape_cols * preview_block_size) or \
+                   _PREVIEW_AREA_HEIGHT < (shape_rows * preview_block_size) or \
+                   preview_block_size <= 0:
 
-                shape_width = len(next_tetromino.shape[0]) * preview_block_size
-                shape_height = len(next_tetromino.shape) * preview_block_size
+                    block_size_w = _PREVIEW_AREA_WIDTH // shape_cols if shape_cols > 0 else _PREVIEW_AREA_WIDTH
+                    block_size_h = _PREVIEW_AREA_HEIGHT // shape_rows if shape_rows > 0 else _PREVIEW_AREA_HEIGHT
+                    preview_block_size = max(1, min(block_size_w, block_size_h))
 
-                draw_x = PREVIEW_AREA_X + (PREVIEW_AREA_WIDTH - shape_width) // 2
-                draw_y = PREVIEW_AREA_Y + (PREVIEW_AREA_HEIGHT - shape_height) // 2
+                shape_width = shape_cols * preview_block_size
+                shape_height = shape_rows * preview_block_size
+
+                draw_x = _PREVIEW_AREA_X + (_PREVIEW_AREA_WIDTH - shape_width) // 2
+                draw_y = _PREVIEW_AREA_Y + (_PREVIEW_AREA_HEIGHT - shape_height) // 2
 
                 next_tetromino.draw_at(screen, draw_x, draw_y, preview_block_size)
 
