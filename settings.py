@@ -55,26 +55,26 @@ NEXT_LABEL_Y = PREVIEW_AREA_Y - LABEL_FONT_SIZE // 2 - 5 # 5px padding above pre
 # ==============================================================================
 # GAME SOUND ASSETS
 # ==============================================================================
-# Replace the placeholder filenames below (e.g., 'rotate_tech.wav')
-# with the actual paths to your sound effect and music files.
+# Replace the placeholder filenames below with the actual paths to your
+# sound effect and music files.
 #
-# Supported formats generally include .wav for sound effects
-# and .ogg or .mp3 for background music.
+# The game is currently configured to expect .mp3 files for all audio.
+# Ensure your chosen audio files are in .mp3 format.
 #
 # If ENABLE_SOUND is True and files are not found, the game will print
 # a warning to the console but will run without sound for that specific effect.
 # ==============================================================================
 ENABLE_SOUND = True # Master switch for all sounds and music
 
-# Placeholder Sound Effect Filenames (replace with your files)
-ROTATE_SOUND_FILE = 'rotate_tech.wav'
-MOVE_SOUND_FILE = 'move_tech.wav' # For block horizontal and soft drop movement
-LAND_SOUND_FILE = 'land_tech.wav' # When a block locks into place
-LINE_CLEAR_SOUND_FILE = 'line_clear_tech.wav' # For 1, 2, or 3 lines cleared
-TETRIS_CLEAR_SOUND_FILE = 'tetris_clear_futuristic.wav' # For 4 lines cleared (a Tetris)
-GAME_OVER_SOUND_FILE = 'game_over_tech.wav' # When the game ends
+# Placeholder Sound Effect Filenames (replace with your .mp3 files)
+ROTATE_SOUND_FILE = 'rotate_tech.mp3'
+MOVE_SOUND_FILE = 'move_tech.mp3' # For block horizontal and soft drop movement
+LAND_SOUND_FILE = 'land_tech.mp3' # When a block locks into place
+LINE_CLEAR_SOUND_FILE = 'line_clear_tech.mp3' # For 1, 2, or 3 lines cleared
+TETRIS_CLEAR_SOUND_FILE = 'tetris_clear_futuristic.mp3' # For 4 lines cleared (a Tetris)
+GAME_OVER_SOUND_FILE = 'game_over_tech.mp3' # When the game ends
 
-# Placeholder Background Music Filename (replace with your file)
-BACKGROUND_MUSIC_FILE = 'relaxing-guitar-loop-v5-245859.ogg'
-# Placeholder for user's chosen background music: 'relaxing-guitar-loop-v5-245859.ogg'
-# User needs to provide this file. .ogg or .mp3 are common for music.
+# Placeholder Background Music Filename (replace with your .mp3 file)
+BACKGROUND_MUSIC_FILE = 'relaxing-guitar-loop-v5-245859.mp3'
+# Placeholder for user's chosen background music: 'relaxing-guitar-loop-v5-245859.mp3'
+# User needs to provide this file in .mp3 format.
