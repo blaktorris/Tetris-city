@@ -220,7 +220,7 @@ def main():
     pause_font = pygame.font.Font(FONT_NAME, PAUSE_FONT_SIZE)
     label_font = pygame.font.Font(FONT_NAME, LABEL_FONT_SIZE)
     floating_score_font = pygame.font.Font(FONT_NAME, FLOATING_SCORE_FONT_SIZE)
-    level_font = pygame.font.Font(FONT_NAME, LEVEL_FONT_SIZE) # Added level font
+    level_font = pygame.font.Font(FONT_NAME, LEVEL_FONT_SIZE)
 
 
     # Global Sound Variables (placeholders)
@@ -294,8 +294,6 @@ def main():
 
     # Leveling System Variables
     current_level = 1
-    # This will be properly calculated later with a helper function for subsequent levels.
-    # For now, points to reach Level 2 (cumulative):
     points_to_reach_next_level_goal = calculate_cumulative_points_for_level(current_level + 1)
     current_fall_speed_seconds = INITIAL_FALL_SPEED_SECONDS
 
@@ -308,7 +306,7 @@ def main():
     # Scoring system
     LINE_SCORES = {1: 100, 2: 300, 3: 500, 4: 800}
 
-    # Fall event setup (will be configured by current_fall_speed_seconds in reset_game)
+    # Fall event setup
     FALL_EVENT = pygame.USEREVENT + 1
 
     def trigger_screen_shake(duration, intensity_val):
@@ -325,7 +323,7 @@ def main():
 
     def handle_landing():
         """Logic for when a tetromino lands."""
-        nonlocal score, game_over, floating_scores # Added floating_scores
+        nonlocal score, game_over, floating_scores, current_level, points_to_reach_next_level_goal, current_fall_speed_seconds
         play_sound(land_sound)
         board.add_tetromino(current_tetromino)
 
@@ -335,23 +333,16 @@ def main():
             points_earned_this_turn = LINE_SCORES.get(lines_marked_for_clearing, 0)
             score += points_earned_this_turn
 
-            # Trigger floating score text
-            # Use safe access for score text position as a base
             _score_text_x_safe = globals().get('SCORE_TEXT_X', SCREEN_WIDTH // 2)
             _score_text_y_safe = globals().get('SCORE_TEXT_Y', 30)
             if not isinstance(_score_text_x_safe, (int,float)): _score_text_x_safe = SCREEN_WIDTH // 2
             if not isinstance(_score_text_y_safe, (int,float)): _score_text_y_safe = 30
-
             spawn_x = _score_text_x_safe
             spawn_y = _score_text_y_safe + floating_score_font.get_height()
-
             new_floating_score = FloatingScore(
-                spawn_x, spawn_y,
-                f"+{points_earned_this_turn}",
-                floating_score_font,
-                FLOATING_SCORE_COLOR,
-                FLOATING_SCORE_LIFESPAN,
-                FLOATING_SCORE_SPEED_Y
+                spawn_x, spawn_y, f"+{points_earned_this_turn}",
+                floating_score_font, FLOATING_SCORE_COLOR,
+                FLOATING_SCORE_LIFESPAN, FLOATING_SCORE_SPEED_Y
             )
             floating_scores.append(new_floating_score)
 
@@ -360,10 +351,19 @@ def main():
             else:
                 play_sound(line_clear_sound)
 
-        # IMPORTANT: Spawning of new tetromino is deferred until animation finishes.
-        # It will be triggered by `board.update_animations()` returning `clearing_just_finished = True`.
-        # If no lines were marked (lines_marked_for_clearing == 0),
-        # and thus no animation, spawn immediately.
+            # Check for level up
+            while score >= points_to_reach_next_level_goal and current_level < MAX_LEVEL:
+                current_level += 1
+                points_to_reach_next_level_goal = calculate_cumulative_points_for_level(current_level + 1)
+
+                new_speed = INITIAL_FALL_SPEED_SECONDS * (FALL_SPEED_MULTIPLIER_PER_LEVEL ** (current_level - 1))
+                current_fall_speed_seconds = max(MIN_FALL_SPEED_SECONDS, new_speed)
+
+                pygame.time.set_timer(FALL_EVENT, 0)
+                pygame.time.set_timer(FALL_EVENT, int(current_fall_speed_seconds * 1000))
+
+                print(f"Level Up! Reached Level {current_level}. Next goal: {points_to_reach_next_level_goal} pts. Speed: {current_fall_speed_seconds:.3f}s")
+
         if lines_marked_for_clearing == 0:
             spawn_new_tetromino()
 
@@ -424,10 +424,10 @@ def main():
     while running:
         # Manage fall timer based on board animation state
         if board.line_clear_animation_timer > 0 and is_fall_timer_active:
-            pygame.time.set_timer(FALL_EVENT, 0) # Pause falling during line clear animation
+            pygame.time.set_timer(FALL_EVENT, 0)
             is_fall_timer_active = False
         elif board.line_clear_animation_timer == 0 and not is_fall_timer_active and not game_over and not paused:
-            pygame.time.set_timer(FALL_EVENT, int(fall_speed * 1000)) # Resume falling
+            pygame.time.set_timer(FALL_EVENT, int(current_fall_speed_seconds * 1000)) # Use current_fall_speed_seconds
             is_fall_timer_active = True
 
         for event in pygame.event.get():
