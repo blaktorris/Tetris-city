@@ -151,3 +151,6 @@ LEVEL_LABEL_TEXT = "Level:"
 # Position for Level display (ensure SCORE_TEXT_Y and SCORE_FONT_SIZE are defined above)
 LEVEL_TEXT_X = GAME_BOARD_WIDTH + SIDE_PANEL_WIDTH // 2 # Centered in side panel
 LEVEL_TEXT_Y = SCORE_TEXT_Y + SCORE_FONT_SIZE + 30      # Below score, with some padding
+
+# --- Save Game Settings ---
+SAVE_GAME_FILE = 'tetris_save.json'

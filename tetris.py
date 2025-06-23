@@ -2,6 +2,7 @@ import pygame
 import sys
 import random
 import math # For particle calculations, if needed for more complex motion
+import json # For saving and loading game state
 from game_elements import Board, Tetromino # Import Tetromino
 from settings import *
 
@@ -94,6 +95,55 @@ class FloatingScore:
             text_width = temp_surface.get_width()
             surface_to_draw_on.blit(temp_surface, (self.x - text_width // 2, self.y))
 
+# --- Save Game Function ---
+def save_game_state(level_to_save, score_to_save, points_goal_to_save, fall_speed_to_save):
+    """Saves the game state to a JSON file."""
+    # Ensure settings constants are available if this is called outside main's direct scope
+    # or if settings are not globally imported prior to this function's definition.
+    # However, with `from settings import *` at module top, SAVE_GAME_FILE should be global.
+    save_file_path = globals().get('SAVE_GAME_FILE', 'tetris_save.json') # Default if not in settings
+
+    state = {
+        'current_level': level_to_save,
+        'score': score_to_save,
+        'points_to_reach_next_level_goal': points_goal_to_save,
+        'current_fall_speed_seconds': fall_speed_to_save
+    }
+    try:
+        with open(SAVE_GAME_FILE, 'w') as f:
+            json.dump(state, f, indent=4)
+        print(f"Game state saved to {SAVE_GAME_FILE}")
+    except IOError as e:
+        print(f"Error: Could not save game state to {SAVE_GAME_FILE}. {e}")
+    except Exception as e:
+        print(f"An unexpected error occurred while saving game state: {e}")
+
+# --- Load Game Function ---
+def load_game_state():
+    """Loads the game state from a JSON file.
+    Returns a dictionary with game state if successful, otherwise None.
+    """
+    save_file_path = globals().get('SAVE_GAME_FILE', 'tetris_save.json') # Default if not in settings
+    try:
+        with open(save_file_path, 'r') as f:
+            state = json.load(f)
+            # Basic validation: check if essential keys exist
+            if all(key in state for key in ['current_level', 'score', 'points_to_reach_next_level_goal', 'current_fall_speed_seconds']):
+                print(f"Game state loaded successfully from {save_file_path}")
+                return state
+            else:
+                print(f"Warning: Save file {save_file_path} is missing essential keys. Starting fresh.")
+                return None
+    except FileNotFoundError:
+        print(f"Info: No save file found at {save_file_path}. Starting a new game.")
+        return None
+    except json.JSONDecodeError:
+        print(f"Warning: Save file {save_file_path} is corrupted or not valid JSON. Starting fresh.")
+        return None
+    except Exception as e:
+        print(f"An unexpected error occurred while loading game state: {e}. Starting fresh.")
+        return None
+
 # --- Single, complete main() function ---
 def main():
     pygame.init()
@@ -153,26 +203,28 @@ def main():
 
     load_sounds_internal()
 
-    # Game state variables
+    # Game state variables - initialized with defaults first
     board = None
     current_tetromino = None
     next_tetromino = None
     score = 0
     game_over = False
     paused = False
-    music_playing = globals().get('ENABLE_SOUND', False) and pygame.mixer.get_init() and pygame.mixer.music.get_busy()
+    music_playing = False # Will be set by load_sounds or reset_game
     particles = []
     floating_scores = []
     current_level = 1
-    points_to_reach_next_level_goal = calculate_cumulative_points_for_level(current_level + 1)
-    current_fall_speed_seconds = INITIAL_FALL_SPEED_SECONDS
+    points_to_reach_next_level_goal = calculate_cumulative_points_for_level(current_level + 1) # Default for L1
+    current_fall_speed_seconds = INITIAL_FALL_SPEED_SECONDS # Default for L1
+
     screen_shake_timer = 0
     screen_shake_intensity = 0
 
     LINE_SCORES = {1: 100, 2: 300, 3: 500, 4: 800}
     FALL_EVENT = pygame.USEREVENT + 1
-    is_fall_timer_active = True
+    is_fall_timer_active = True # Will be managed by reset_game and pause logic
 
+    # Define nested helper functions (these need access to main's scope variables via nonlocal)
     def trigger_screen_shake_internal(duration, intensity_val):
         nonlocal screen_shake_timer, screen_shake_intensity
         if duration > screen_shake_timer or intensity_val > screen_shake_intensity:
@@ -229,6 +281,8 @@ def main():
     def reset_game_internal():
         nonlocal board, score, game_over, paused, next_tetromino, current_tetromino, music_playing
         nonlocal current_level, points_to_reach_next_level_goal, current_fall_speed_seconds, particles, floating_scores
+        nonlocal is_fall_timer_active # Ensure this is also reset/managed
+
         board = Board()
         score = 0
         game_over = False
@@ -236,20 +290,48 @@ def main():
         current_level = 1
         current_fall_speed_seconds = INITIAL_FALL_SPEED_SECONDS
         points_to_reach_next_level_goal = calculate_cumulative_points_for_level(current_level + 1)
+
         next_tetromino = Tetromino(get_random_tetromino_shape(), board)
-        spawn_new_tetromino_internal()
+        spawn_new_tetromino_internal() # This also handles initial current_tetromino
+
         pygame.time.set_timer(FALL_EVENT, int(current_fall_speed_seconds * 1000))
+        is_fall_timer_active = True # Explicitly set after timer
+
         particles.clear()
         floating_scores.clear()
+
         if globals().get('ENABLE_SOUND', False) and pygame.mixer.get_init():
             try:
                 pygame.mixer.music.play(-1)
                 music_playing = True
-            except pygame.error as e: print(f"Warning: Could not play music on reset. {e}"); music_playing = False
-        else: music_playing = False
+            except pygame.error as e:
+                print(f"Warning: Could not play music on reset. {e}")
+                music_playing = False
+        else:
+            music_playing = False
 
+    # Initial setup of the game
     reset_game_internal()
-    is_fall_timer_active = True
+
+    # Attempt to load game state, potentially overriding parts of reset_game_internal's setup
+    loaded_state = load_game_state()
+    if loaded_state:
+        print("Applying loaded game state.")
+        current_level = int(loaded_state.get('current_level', current_level))
+        score = int(loaded_state.get('score', score))
+
+        # Robust way: recalculate dependent values based on loaded level and score
+        current_fall_speed_seconds = max(MIN_FALL_SPEED_SECONDS, INITIAL_FALL_SPEED_SECONDS * (FALL_SPEED_MULTIPLIER_PER_LEVEL ** (current_level - 1)))
+        points_to_reach_next_level_goal = calculate_cumulative_points_for_level(current_level + 1)
+
+        # Update the FALL_EVENT timer with loaded/recalculated speed
+        pygame.time.set_timer(FALL_EVENT, 0) # Clear existing timer
+        pygame.time.set_timer(FALL_EVENT, int(current_fall_speed_seconds * 1000))
+        is_fall_timer_active = True # Ensure it's considered active
+
+        print(f"Loaded State: Level {current_level}, Score {score}, Speed {current_fall_speed_seconds:.3f}, Next Goal {points_to_reach_next_level_goal}")
+        # Note: Board state (grid, current/next piece) is not saved/loaded in this version.
+        # So, loading will always start with a fresh board but at the saved level/score/speed.
 
     running = True
     while running:
@@ -461,6 +543,14 @@ def main():
         screen.blit(game_surface, (render_offset_x, render_offset_y))
         pygame.display.flip()
         clock.tick(30)
+
+    # Save game state on exit
+    save_game_state(
+        current_level,
+        score,
+        points_to_reach_next_level_goal,
+        current_fall_speed_seconds
+    )
 
     pygame.quit()
     sys.exit()
