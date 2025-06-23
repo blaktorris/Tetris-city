@@ -128,7 +128,7 @@ BLOCK_HIGHLIGHT_BRIGHTNESS_FACTOR = 1.4 # Multiplier for lighter shade
 BLOCK_SHADOW_DARKNESS_FACTOR = 0.6    # Multiplier for darker shade
 
 # --- Level System Settings ---
-MAX_LEVEL = 15  # Maximum reachable level
+MAX_LEVEL = 200  # Maximum reachable level
 
 # Points progression
 BASE_POINTS_FOR_NEXT_LEVEL_INCREMENT = 500 # Points needed to get from L1 to L2 (this is the delta, not cumulative)
