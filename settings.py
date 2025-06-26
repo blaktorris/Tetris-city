@@ -128,7 +128,7 @@ BLOCK_HIGHLIGHT_BRIGHTNESS_FACTOR = 1.4 # Multiplier for lighter shade
 BLOCK_SHADOW_DARKNESS_FACTOR = 0.6    # Multiplier for darker shade
 
 # --- Level System Settings ---
-MAX_LEVEL = 200  # Maximum reachable level
+MAX_LEVEL = 300  # Maximum reachable level
 
 # Points progression
 BASE_POINTS_FOR_NEXT_LEVEL_INCREMENT = 500 # Points needed to get from L1 to L2 (this is the delta, not cumulative)
@@ -154,3 +154,27 @@ LEVEL_TEXT_Y = SCORE_TEXT_Y + SCORE_FONT_SIZE + 30      # Below score, with some
 
 # --- Save Game Settings ---
 SAVE_GAME_FILE = 'tetris_save.json'
+
+# --- Dynamic Background Settings ---
+BACKGROUND_IMAGE_PATH = "backgrounds/"  # Subfolder for background images
+# IMPORTANT FOR USER:
+# 1. Create a folder named 'backgrounds' in the same directory as your tetris.py game.
+# 2. Place your background image files (e.g., .png, .jpg) into this 'backgrounds' folder.
+# 3. Update the list below with the filenames of your images, in the order you want them to appear.
+#    The game will cycle through these images as the player levels up.
+#    If an image is not found, the game will attempt to use 'bg_default.png' from this list/folder.
+#    If 'bg_default.png' is also not found, the background will be a solid color.
+BACKGROUND_IMAGE_FILENAMES = [
+    "bg_default.png", # A default fallback image. Ensure this file exists in 'backgrounds/' if you want a fallback.
+    # Example: "tropical_neon_1.png",
+    #          "cityscape_sunset_2.png",
+    #          "abstract_tunnel_3.png",
+    # Add more filenames here as strings.
+]
+BACKGROUND_FADE_DURATION = 30  # Frames for fade transition (e.g., 0.5s at 60FPS)
+
+# --- Event Tint Settings ---
+EVENT_TINT_DURATION = 20  # Frames for how long the tint effect lasts
+EVENT_TINT_COLOR_TETRIS = (255, 223, 0, 75)  # Example: Gold, semi-transparent (RGBA)
+EVENT_TINT_COLOR_LEVELUP = (100, 100, 255, 75) # Example: Blue, semi-transparent (RGBA)
+# Alpha value (4th item in tuple, 0-255) controls transparency. Lower is more transparent.

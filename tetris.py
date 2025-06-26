@@ -3,6 +3,7 @@ import sys
 import random
 import math # For particle calculations, if needed for more complex motion
 import json # For saving and loading game state
+import os   # For path joining, especially for background images
 from game_elements import Board, Tetromino # Import Tetromino
 from settings import *
 
@@ -93,7 +94,65 @@ class FloatingScore:
             temp_surface = self.font.render(self.points_text, True, self.color)
             temp_surface.set_alpha(self.alpha)
             text_width = temp_surface.get_width()
+            text_width = temp_surface.get_width()
             surface_to_draw_on.blit(temp_surface, (self.x - text_width // 2, self.y))
+
+# --- Background Image Loader ---
+def load_background(bg_idx_to_load):
+    """Loads, scales, and returns a background image surface.
+    Returns None if loading fails.
+    """
+    filenames = globals().get('BACKGROUND_IMAGE_FILENAMES', ['bg_default.png'])
+    path_prefix = globals().get('BACKGROUND_IMAGE_PATH', 'backgrounds/')
+    _scr_w = globals().get('SCREEN_WIDTH', 600)
+    _scr_h = globals().get('SCREEN_HEIGHT', 600)
+    default_bg_filename = 'bg_default.png'
+
+    if not filenames:
+        print("Warning: BACKGROUND_IMAGE_FILENAMES is empty in settings.")
+        try:
+            full_path_default = os.path.join(path_prefix, default_bg_filename)
+            image_surface = pygame.image.load(full_path_default).convert()
+            scaled_image = pygame.transform.scale(image_surface, (_scr_w, _scr_h))
+            print(f"Loaded hardcoded default background: {default_bg_filename}")
+            return scaled_image
+        except Exception as e:
+            print(f"Failed to load hardcoded default background '{default_bg_filename}': {e}")
+            return None
+
+    selected_filename_for_load = ""
+    is_default_selected = False
+
+    if 0 <= bg_idx_to_load < len(filenames):
+        selected_filename_for_load = filenames[bg_idx_to_load]
+    else:
+        print(f"Warning: Background index {bg_idx_to_load} out of range. Falling back to default image '{default_bg_filename}'.")
+        if default_bg_filename in filenames:
+            selected_filename_for_load = default_bg_filename
+            is_default_selected = True
+        elif filenames:
+             selected_filename_for_load = filenames[0]
+             print(f"'{default_bg_filename}' not in list, using first available: '{selected_filename_for_load}'")
+        else:
+            return None
+
+    try:
+        full_path = os.path.join(path_prefix, selected_filename_for_load)
+        image_surface = pygame.image.load(full_path).convert()
+        scaled_image = pygame.transform.scale(image_surface, (_scr_w, _scr_h))
+        return scaled_image
+    except Exception as e:
+        print(f"Error loading background '{selected_filename_for_load}' from '{full_path}': {e}")
+        if not is_default_selected and default_bg_filename in filenames and selected_filename_for_load != default_bg_filename:
+            print(f"Attempting to load '{default_bg_filename}' as fallback.")
+            try:
+                full_path_default = os.path.join(path_prefix, default_bg_filename)
+                image_surface_default = pygame.image.load(full_path_default).convert()
+                scaled_image_default = pygame.transform.scale(image_surface_default, (_scr_w, _scr_h))
+                return scaled_image_default
+            except Exception as e_default:
+                print(f"Fallback '{default_bg_filename}' also failed to load: {e_default}")
+    return None
 
 # --- Save Game Function ---
 def save_game_state(level_to_save, score_to_save, points_goal_to_save, fall_speed_to_save):
@@ -210,21 +269,27 @@ def main():
     score = 0
     game_over = False
     paused = False
-    music_playing = False # Will be set by load_sounds or reset_game
+    music_playing = False
     particles = []
     floating_scores = []
     current_level = 1
-    points_to_reach_next_level_goal = calculate_cumulative_points_for_level(current_level + 1) # Default for L1
-    current_fall_speed_seconds = INITIAL_FALL_SPEED_SECONDS # Default for L1
+    points_to_reach_next_level_goal = calculate_cumulative_points_for_level(current_level + 1)
+    current_fall_speed_seconds = INITIAL_FALL_SPEED_SECONDS
+
+    # Background state variables
+    current_bg_surface = None
+    next_bg_surface = None
+    bg_fade_alpha = 0
+    active_background_index = -1
 
     screen_shake_timer = 0
     screen_shake_intensity = 0
 
     LINE_SCORES = {1: 100, 2: 300, 3: 500, 4: 800}
     FALL_EVENT = pygame.USEREVENT + 1
-    is_fall_timer_active = True # Will be managed by reset_game and pause logic
+    is_fall_timer_active = True
 
-    # Define nested helper functions (these need access to main's scope variables via nonlocal)
+    # Define nested helper functions
     def trigger_screen_shake_internal(duration, intensity_val):
         nonlocal screen_shake_timer, screen_shake_intensity
         if duration > screen_shake_timer or intensity_val > screen_shake_intensity:
@@ -248,10 +313,14 @@ def main():
             if music_playing: pygame.mixer.music.stop()
 
     def handle_landing_internal():
+    def handle_landing_internal():
         nonlocal score, game_over, floating_scores, current_level, points_to_reach_next_level_goal, current_fall_speed_seconds
+        nonlocal active_background_index, current_bg_surface, next_bg_surface, bg_fade_alpha # Added for background switch
+
         play_sound_internal(land_sound)
         board.add_tetromino(current_tetromino)
         lines_marked_for_clearing = board.clear_lines()
+
         if lines_marked_for_clearing > 0:
             points_earned_this_turn = LINE_SCORES.get(lines_marked_for_clearing, 0)
             score += points_earned_this_turn
@@ -266,8 +335,10 @@ def main():
                 floating_score_font, FLOATING_SCORE_COLOR,
                 FLOATING_SCORE_LIFESPAN, FLOATING_SCORE_SPEED_Y)
             floating_scores.append(new_floating_score)
+
             if lines_marked_for_clearing == 4: play_sound_internal(tetris_clear_sound)
             else: play_sound_internal(line_clear_sound)
+
             while score >= points_to_reach_next_level_goal and current_level < MAX_LEVEL:
                 current_level += 1
                 points_to_reach_next_level_goal = calculate_cumulative_points_for_level(current_level + 1)
@@ -276,12 +347,28 @@ def main():
                 pygame.time.set_timer(FALL_EVENT, 0)
                 pygame.time.set_timer(FALL_EVENT, int(current_fall_speed_seconds * 1000))
                 print(f"Level Up! Reached Level {current_level}. Next goal: {points_to_reach_next_level_goal} pts. Speed: {current_fall_speed_seconds:.3f}s")
+
+                # --- Background Switching Logic ---
+                _background_image_filenames = globals().get('BACKGROUND_IMAGE_FILENAMES', ['bg_default.png'])
+                if _background_image_filenames:
+                    new_bg_idx = (current_level - 1) % len(_background_image_filenames)
+                    if new_bg_idx != active_background_index:
+                        print(f"Level {current_level}: Triggering background change from index {active_background_index} to {new_bg_idx}.")
+                        new_background_candidate = load_background(new_bg_idx)
+                        if new_background_candidate:
+                            next_bg_surface = new_background_candidate
+                            bg_fade_alpha = 0
+                            active_background_index = new_bg_idx
+                        else:
+                            print(f"Warning: Failed to load new background for level {current_level}, index {new_bg_idx}. Keeping current background.")
+                # --- End Background Switching Logic ---
+
         if lines_marked_for_clearing == 0: spawn_new_tetromino_internal()
 
     def reset_game_internal():
         nonlocal board, score, game_over, paused, next_tetromino, current_tetromino, music_playing
         nonlocal current_level, points_to_reach_next_level_goal, current_fall_speed_seconds, particles, floating_scores
-        nonlocal is_fall_timer_active # Ensure this is also reset/managed
+        nonlocal is_fall_timer_active, current_bg_surface, active_background_index, next_bg_surface, bg_fade_alpha
 
         board = Board()
         score = 0
@@ -292,13 +379,27 @@ def main():
         points_to_reach_next_level_goal = calculate_cumulative_points_for_level(current_level + 1)
 
         next_tetromino = Tetromino(get_random_tetromino_shape(), board)
-        spawn_new_tetromino_internal() # This also handles initial current_tetromino
+        spawn_new_tetromino_internal()
 
         pygame.time.set_timer(FALL_EVENT, int(current_fall_speed_seconds * 1000))
-        is_fall_timer_active = True # Explicitly set after timer
+        is_fall_timer_active = True
 
         particles.clear()
         floating_scores.clear()
+
+        # Load initial background
+        new_bg_idx = 0
+        current_bg_surface = load_background(new_bg_idx)
+        active_background_index = new_bg_idx
+        next_bg_surface = None
+        bg_fade_alpha = 0
+
+        if current_bg_surface is None:
+            print("Warning: Initial background load failed. Game will have default fill color as background.")
+            # Optionally create a solid color surface as a fallback background here
+            # _scr_w = globals().get('SCREEN_WIDTH', 600); _scr_h = globals().get('SCREEN_HEIGHT', 600)
+            # current_bg_surface = pygame.Surface((_scr_w, _scr_h))
+            # current_bg_surface.fill(globals().get('ALT_BACKGROUND_COLOR', (10,10,30))) # Example
 
         if globals().get('ENABLE_SOUND', False) and pygame.mixer.get_init():
             try:
@@ -414,6 +515,39 @@ def main():
                  is_fall_timer_active = True
 
         game_surface.fill(BLACK)
+
+        # --- Background Drawing and Transition ---
+        nonlocal current_bg_surface, next_bg_surface, bg_fade_alpha # Make sure these are nonlocal if main loop is not the direct outer scope (they are in main's scope)
+
+        if current_bg_surface:
+            current_bg_surface.set_alpha(None)
+            game_surface.blit(current_bg_surface, (0, 0))
+
+        if next_bg_surface:
+            if bg_fade_alpha < 255:
+                _fade_increment = 255.0 / max(1, BACKGROUND_FADE_DURATION)
+                bg_fade_alpha += _fade_increment
+                bg_fade_alpha = min(bg_fade_alpha, 255)
+
+                next_bg_surface.set_alpha(int(bg_fade_alpha))
+                game_surface.blit(next_bg_surface, (0, 0))
+
+                if int(bg_fade_alpha) >= 255:
+                    current_bg_surface = next_bg_surface
+                    next_bg_surface = None
+                    bg_fade_alpha = 0
+                    if current_bg_surface:
+                        current_bg_surface.set_alpha(None)
+            else:
+                current_bg_surface = next_bg_surface
+                next_bg_surface = None
+                bg_fade_alpha = 0
+                if current_bg_surface:
+                    current_bg_surface.set_alpha(None)
+        elif current_bg_surface:
+            current_bg_surface.set_alpha(None)
+        # --- End Background Drawing and Transition ---
+
         board.draw(game_surface)
 
         if not game_over and not paused and current_tetromino and board.line_clear_animation_timer == 0:
